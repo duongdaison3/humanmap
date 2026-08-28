@@ -1,0 +1,9 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "database": "ai-studio-humanmap-9967fa81-ac2c-47f4-99ee-e02c39061920"
+  },
+  "projects": {
+    "default": "gen-lang-client-0663590699"
+  }
+}
