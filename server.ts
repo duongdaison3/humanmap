@@ -678,7 +678,8 @@ async function verifyFirebaseIdToken(authHeader: string | undefined): Promise<To
   }
 
   const token = parts[1];
-  const apiKey = firebaseAppletConfig.apiKey;
+  const apiKey = process.env.API_KEY ||
+    (firebaseAppletConfig.apiKey !== "API_KEY" ? firebaseAppletConfig.apiKey : "");
 
   if (!apiKey) {
     return {

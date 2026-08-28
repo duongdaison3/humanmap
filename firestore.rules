@@ -26,9 +26,10 @@ service cloud.firestore {
       // Owner can create profile when registering
       allow create: if isOwner(userId)
                     && request.resource.data.id == userId
-                    && !('reliabilityScore' in request.resource.data)
-                    && !('totalHelpedCount' in request.resource.data)
-                    && !('totalReceivedCount' in request.resource.data);
+                    && request.resource.data.totalHelpedCount == 0
+                    && request.resource.data.totalReceivedCount == 0
+                    && request.resource.data.reliabilityScore >= 0
+                    && request.resource.data.reliabilityScore <= 1;
 
       // Owner can update user-editable profile fields, but CANNOT update system metrics
       allow update: if isOwner(userId)
