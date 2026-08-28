@@ -48,7 +48,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   return (
     <div className="min-h-screen bg-transparent text-[#1E293B] flex flex-col font-sans">
       {/* Top Brand Header */}
-      <header className="sticky top-0 z-30 bg-white/45 backdrop-blur-xl border-b border-white/70 shadow-[0_8px_28px_rgba(30,64,78,0.08)]">
+      <header className="sticky top-0 z-30 bg-white border-b border-[#d9e5df] shadow-[0_2px_8px_rgba(20,60,45,0.06)]">
         {showBanner && <SafetyBanner onClose={() => setShowBanner(false)} />}
         {notificationBanner}
 
@@ -60,7 +60,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             {/* Interactive Province Badge Button */}
             <button
               onClick={() => setIsProvinceModalOpen(true)}
-              className="clay-pill-blue flex items-center gap-1 text-[11px] font-black text-[#2563EB] px-2.5 py-1 uppercase tracking-wider hover:scale-105 transition-transform cursor-pointer group shadow-xs shrink-0"
+              className="clay-pill-blue flex items-center gap-1 text-[11px] font-bold text-[#0f766e] px-2.5 py-1 hover:bg-[#ccfbf1] transition-colors cursor-pointer group shrink-0"
               title="Nhấn để đổi Tỉnh/Thành phố hoặc định vị lại GPS"
             >
               <div className="relative flex items-center justify-center">
@@ -88,7 +88,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
 
         {/* Tagline Sub-bar */}
-        <div className="bg-white/30 border-t border-white/50 py-1.5 px-4 text-center backdrop-blur-md">
+        <div className="bg-[#f5f7f4] border-t border-[#edf2ef] py-1.5 px-4 text-center">
           <p className="text-[11px] text-stone-600 font-serif italic hidden sm:block">
             "Google Maps giúp bạn tìm địa điểm. Human Map giúp bạn tìm thấy con người khắp 63 tỉnh thành."
           </p>
@@ -101,7 +101,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         {activeSession && (
           <div
             onClick={onOpenActiveSession}
-            className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-4 py-2 text-xs font-medium flex items-center justify-between cursor-pointer hover:opacity-95 transition-opacity animate-pulse shadow-md"
+            className="bg-[#047857] text-white px-4 py-2 text-xs font-medium flex items-center justify-between cursor-pointer hover:bg-[#065f46] transition-colors"
           >
             <div className="flex items-center gap-2">
               <HeartHandshake className="w-4 h-4" />

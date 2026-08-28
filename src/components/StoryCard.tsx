@@ -42,9 +42,9 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           </h3>
 
           {story.quote && story.quote.trim().length > 0 && (
-            <p className="font-serif italic text-sm text-slate-800 clay-card-warm p-3.5 rounded-2xl mb-3 leading-relaxed">
+            <blockquote className="font-serif italic text-sm text-slate-800 border-l-4 border-[#f97316] pl-3 mb-3 leading-relaxed">
               "{story.quote}"
-            </p>
+            </blockquote>
           )}
 
           <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-2 font-medium">
