@@ -1,0 +1,6 @@
+{
+  "name": "HUMAN MAP",
+  "description": "Find people. Help a little. Feel closer. Discover safe micro-help opportunities and human stories connected to places around you.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,175 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default deny all access to any unmapped collections/subcollections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper function: check if user is authenticated
+    function isAuth() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Helper function: check if user is owner of document
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // --- USERS COLLECTION ---
+    // /users/{userId}
+    match /users/{userId} {
+      // Any authenticated user can read public user profiles for helper matching / discovery
+      allow read: if isAuth();
+
+      // Owner can create profile when registering
+      allow create: if isOwner(userId)
+                    && request.resource.data.id == userId
+                    && !('reliabilityScore' in request.resource.data)
+                    && !('totalHelpedCount' in request.resource.data)
+                    && !('totalReceivedCount' in request.resource.data);
+
+      // Owner can update user-editable profile fields, but CANNOT update system metrics
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'reliabilityScore', 
+                         'totalHelpedCount', 
+                         'totalReceivedCount', 
+                         'role', 
+                         'email'
+                       ]);
+
+      allow delete: if false;
+
+      // Protected Private Exact Location subcollection
+      // /users/{userId}/privateLocations/location
+      match /privateLocations/{locId} {
+        // Only the owner can read or write their own exact private location
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // --- HELP REQUESTS COLLECTION ---
+    // /helpRequests/{requestId}
+    match /helpRequests/{requestId} {
+      // Authenticated users can read open or active help requests for discovery
+      allow read: if isAuth();
+
+      // Authenticated user can create help request setting requesterId to their uid
+      allow create: if isAuth() 
+                    && request.resource.data.requesterId == request.auth.uid;
+
+      // Requester owner can update their request (e.g. status change)
+      allow update: if isAuth() 
+                    && resource.data.requesterId == request.auth.uid;
+
+      allow delete: if isAuth() 
+                    && resource.data.requesterId == request.auth.uid;
+    }
+
+    // --- MATCHES COLLECTION ---
+    // /matches/{matchId}
+    match /matches/{matchId} {
+      // Only requester or helper involved in the match can read
+      allow read: if isAuth() && (
+        resource.data.helperId == request.auth.uid ||
+        resource.data.requesterId == request.auth.uid
+      );
+
+      // Authenticated user can create a match record where they are helper or requester
+      allow create: if isAuth() && (
+        request.resource.data.helperId == request.auth.uid ||
+        request.resource.data.requesterId == request.auth.uid
+      );
+
+      // Only participants can update status
+      allow update: if isAuth() && (
+        resource.data.helperId == request.auth.uid ||
+        resource.data.requesterId == request.auth.uid
+      );
+
+      allow delete: if false;
+    }
+
+    // --- INTERACTIONS COLLECTION ---
+    // /interactions/{interactionId}
+    match /interactions/{interactionId} {
+      // Private interaction logs: Only helper or requester participant can read
+      allow read: if isAuth() && (
+        resource.data.helperId == request.auth.uid ||
+        resource.data.requesterId == request.auth.uid
+      );
+
+      // Only helper or requester participant can create interaction
+      allow create: if isAuth() && (
+        request.resource.data.helperId == request.auth.uid ||
+        request.resource.data.requesterId == request.auth.uid
+      );
+
+      // Only participants can update status
+      allow update: if isAuth() && (
+        resource.data.helperId == request.auth.uid ||
+        resource.data.requesterId == request.auth.uid
+      );
+
+      allow delete: if false;
+    }
+
+    // --- HELP SESSIONS COLLECTION ---
+    // /helpSessions/{sessionId}
+    match /helpSessions/{sessionId} {
+      // Only requester or helper participant can read
+      allow read: if isAuth() && (
+        resource.data.helperId == request.auth.uid ||
+        resource.data.requesterId == request.auth.uid
+      );
+
+      // Only participant can create a help session where they are requester or helper
+      allow create: if isAuth() && (
+        request.resource.data.helperId == request.auth.uid ||
+        request.resource.data.requesterId == request.auth.uid
+      );
+
+      // Only participant can update session
+      allow update: if isAuth() && (
+        resource.data.helperId == request.auth.uid ||
+        resource.data.requesterId == request.auth.uid
+      );
+
+      allow delete: if false;
+    }
+
+    // --- STORIES COLLECTION ---
+    // /stories/{storyId}
+    match /stories/{storyId} {
+      // Authenticated users or public viewers for explicitly consented public stories can read
+      allow read: if isAuth() || resource.data.isPublicConsent == true;
+
+      // Authenticated user can create a story if authorId matches request.auth.uid
+      allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
+
+      // Only author can update or delete their story
+      allow update: if isAuth() && resource.data.authorId == request.auth.uid;
+      allow delete: if isAuth() && resource.data.authorId == request.auth.uid;
+    }
+
+    // --- TRUST EVENTS COLLECTION ---
+    // /trustEvents/{eventId}
+    match /trustEvents/{eventId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // --- SAFETY CHECKS COLLECTION ---
+    // /safetyChecks/{checkId}
+    match /safetyChecks/{checkId} {
+      allow read, create, update: if isAuth() && (
+        request.auth.uid == resource.data.userId ||
+        request.auth.uid == request.resource.data.userId
+      );
+      allow delete: if false;
+    }
+  }
+}

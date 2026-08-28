@@ -1,0 +1,128 @@
+{
+  "entities": {
+    "NeedRequest": {
+      "title": "NeedRequest",
+      "description": "A micro-help request on the Human Map",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "requesterId": { "type": "string" },
+        "requesterName": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "distanceMeters": { "type": "number" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "estimatedMinutes": { "type": "number" },
+        "riskLevel": { "type": "string" },
+        "status": { "type": "string" },
+        "isAnonymous": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "locationName": { "type": "string" }
+      },
+      "required": ["id", "title", "status"]
+    },
+    "Story": {
+      "title": "Story",
+      "description": "A human connection story captured after micro-help",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "quote": { "type": "string" },
+        "body": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "isAnonymous": { "type": "boolean" },
+        "locationName": { "type": "string" },
+        "distanceMeters": { "type": "number" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "theme": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "likesCount": { "type": "number" },
+        "relatedNeedId": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["id", "title", "body"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and helper stats",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "bio": { "type": "string" },
+        "role": { "type": "string" },
+        "locationName": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "totalHelpedCount": { "type": "number" },
+        "totalReceivedCount": { "type": "number" },
+        "savedStoryIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "isHelperAvailable": { "type": "boolean" },
+        "reliabilityScore": { "type": "number" }
+      },
+      "required": ["id", "name"]
+    },
+    "MatchRecord": {
+      "title": "MatchRecord",
+      "description": "AI recommendation match record between helper and requester",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "helpRequestId": { "type": "string" },
+        "helperId": { "type": "string" },
+        "helperName": { "type": "string" },
+        "score": { "type": "number" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "helpRequestId", "helperId"]
+    },
+    "InteractionRecord": {
+      "title": "InteractionRecord",
+      "description": "Active or completed micro-help interaction log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "helpRequestId": { "type": "string" },
+        "requesterName": { "type": "string" },
+        "helperId": { "type": "string" },
+        "helperName": { "type": "string" },
+        "startedAt": { "type": "string" },
+        "completedAt": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "helpRequestId", "status"]
+    }
+  },
+  "firestore": {
+    "/helpRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/NeedRequest" },
+      "description": "Collection of micro-help requests"
+    },
+    "/stories/{storyId}": {
+      "schema": { "$ref": "#/entities/Story" },
+      "description": "Collection of human connection stories"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles"
+    },
+    "/matches/{matchId}": {
+      "schema": { "$ref": "#/entities/MatchRecord" },
+      "description": "Collection of AI match records"
+    },
+    "/interactions/{interactionId}": {
+      "schema": { "$ref": "#/entities/InteractionRecord" },
+      "description": "Collection of active and past help interactions"
+    }
+  }
+}
