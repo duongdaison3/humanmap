@@ -12,6 +12,14 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid != null;
     }
 
+    function isAdmin() {
+      return isAuth() && request.auth.token.admin == true;
+    }
+
+    function isModerator() {
+      return isAdmin() || (isAuth() && request.auth.token.role == 'moderator');
+    }
+
     // Helper function: check if user is owner of document
     function isOwner(userId) {
       return isAuth() && request.auth.uid == userId;
@@ -22,6 +30,8 @@ service cloud.firestore {
     match /users/{userId} {
       // Any authenticated user can read public user profiles for helper matching / discovery
       allow read: if isAuth();
+
+      allow update: if isAdmin();
 
       // Owner can create profile when registering
       allow create: if isOwner(userId)
@@ -56,6 +66,8 @@ service cloud.firestore {
     match /helpRequests/{requestId} {
       // Authenticated users can read open or active help requests for discovery
       allow read: if isAuth();
+
+      allow update: if isModerator();
 
       // Authenticated user can create help request setting requesterId to their uid
       allow create: if isAuth() 
@@ -146,6 +158,10 @@ service cloud.firestore {
     match /stories/{storyId} {
       // Authenticated users or public viewers for explicitly consented public stories can read
       allow read: if isAuth() || resource.data.isPublicConsent == true;
+
+      allow update: if isModerator();
+
+      allow delete: if isAdmin();
 
       // Authenticated user can create a story if authorId matches request.auth.uid
       allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;

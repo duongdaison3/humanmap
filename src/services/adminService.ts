@@ -1,4 +1,4 @@
-import { AdminIdentity, AdminSummary, NeedRequest, Story, RequestStatus } from '../types';
+import { AdminIdentity, AdminSummary, NeedRequest, Story, RequestStatus, UserProfile } from '../types';
 import { dataService } from './dataService';
 
 const emptyRequests = (): Record<RequestStatus, number> => ({
@@ -69,5 +69,25 @@ export const adminService = {
         tone: toneForStatus(need.status),
       })),
     };
+  },
+
+  async getRequests(): Promise<NeedRequest[]> {
+    return dataService.getAdminRequests();
+  },
+
+  async updateRequestStatus(id: string, status: RequestStatus): Promise<void> {
+    return dataService.updateAdminRequestStatus(id, status);
+  },
+
+  async getStories(): Promise<Story[]> {
+    return dataService.getAdminStories();
+  },
+
+  async moderateStory(id: string, isPublicConsent: boolean): Promise<void> {
+    return dataService.moderateStory(id, isPublicConsent);
+  },
+
+  async getUsers(): Promise<UserProfile[]> {
+    return dataService.getAdminUsers();
   },
 };

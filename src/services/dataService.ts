@@ -875,6 +875,37 @@ export const dataService = {
     return updated;
   },
 
+  async getAdminUsers(): Promise<UserProfile[]> {
+    if (!isFirebaseConfigured || !db) throw new Error('FIREBASE_NOT_CONFIGURED');
+    const snapshot = await getDocs(collection(db, 'users'));
+    return snapshot.docs.map((userDoc) => userDoc.data() as UserProfile);
+  },
+
+  async getAdminRequests(): Promise<NeedRequest[]> {
+    if (!isFirebaseConfigured || !db) throw new Error('FIREBASE_NOT_CONFIGURED');
+    const snapshot = await getDocs(query(collection(db, 'helpRequests'), orderBy('createdAt', 'desc')));
+    return snapshot.docs.map((requestDoc) => ({ id: requestDoc.id, ...requestDoc.data() }) as NeedRequest);
+  },
+
+  async updateAdminRequestStatus(id: string, status: RequestStatus): Promise<void> {
+    if (!isFirebaseConfigured || !db) throw new Error('FIREBASE_NOT_CONFIGURED');
+    await updateDoc(doc(db, 'helpRequests', id), { status });
+  },
+
+  async getAdminStories(): Promise<Story[]> {
+    if (!isFirebaseConfigured || !db) throw new Error('FIREBASE_NOT_CONFIGURED');
+    const snapshot = await getDocs(query(collection(db, 'stories'), orderBy('createdAt', 'desc')));
+    return snapshot.docs.map((storyDoc) => ({ id: storyDoc.id, ...storyDoc.data() }) as Story);
+  },
+
+  async moderateStory(id: string, isPublicConsent: boolean): Promise<void> {
+    if (!isFirebaseConfigured || !db) throw new Error('FIREBASE_NOT_CONFIGURED');
+    await updateDoc(doc(db, 'stories', id), {
+      isPublicConsent,
+      authorVisibility: isPublicConsent ? 'public' : 'anonymous',
+    });
+  },
+
   async resetToDefaultMockData(): Promise<void> {
     localStorage.setItem(STORAGE_KEYS.NEEDS, JSON.stringify([]));
     localStorage.setItem(STORAGE_KEYS.STORIES, JSON.stringify([]));
