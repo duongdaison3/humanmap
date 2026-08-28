@@ -316,4 +316,49 @@ export interface ImpactMetrics {
   hasSufficientData: boolean;
 }
 
+export type AdminRole = 'admin' | 'moderator' | 'support';
+
+export type AdminPermission =
+  | 'overview.read'
+  | 'requests.read'
+  | 'requests.moderate'
+  | 'users.read'
+  | 'users.moderate'
+  | 'stories.read'
+  | 'stories.moderate'
+  | 'sessions.read'
+  | 'safety.read'
+  | 'safety.moderate'
+  | 'trust.read'
+  | 'audit.read'
+  | 'settings.manage';
+
+export interface AdminIdentity {
+  uid: string;
+  email?: string;
+  role: AdminRole;
+  permissions: AdminPermission[];
+}
+
+export interface AdminSummary {
+  requests: Record<RequestStatus, number>;
+  stories: { total: number; pending: number; public: number };
+  users: { total: number; activeHelpers: number };
+  sessions: { active: number; completed: number };
+  safety: { unresolved: number };
+  impact: ImpactMetrics;
+  recentActivity: Array<{ id: string; label: string; detail: string; timestamp: string; tone: 'blue' | 'green' | 'amber' | 'red' }>;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  actorUid: string;
+  actorEmail?: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  reason?: string;
+  createdAt: string;
+}
+
 

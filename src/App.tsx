@@ -24,9 +24,14 @@ import { HANOI_CENTER } from './data/mockData';
 import { locationService, VietnamProvince, DetectedLocationResult } from './services/locationService';
 import { AuthModal } from './components/AuthModal';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 import { MapPin, HeartHandshake, BookOpen, Compass, ArrowRight, ShieldCheck, Sparkles, Filter, BellRing } from 'lucide-react';
 
 export default function App() {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+    return <AdminDashboard />;
+  }
+
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [needs, setNeeds] = useState<NeedRequest[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
