@@ -12,6 +12,7 @@ interface MapViewProps {
   users: UserProfile[];
   currentUser?: UserProfile | null;
   onUserLocationChange?: (coords: { lat: number; lng: number }) => void;
+  onGoHome: () => void;
   onSelectNeed: (need: NeedRequest) => void;
   onSelectStory: (story: Story) => void;
 }
@@ -22,6 +23,7 @@ export const MapView: React.FC<MapViewProps> = ({
   users,
   currentUser,
   onUserLocationChange,
+  onGoHome,
   onSelectNeed,
   onSelectStory,
 }) => {
@@ -132,6 +134,7 @@ export const MapView: React.FC<MapViewProps> = ({
           currentUser={currentUser}
           activeRoute={activeRoute}
           onUserLocationChange={onUserLocationChange}
+          onGoHome={onGoHome}
           onSelectMarker={(selected) => setSelectedItem(selected)}
         />
       </div>

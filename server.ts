@@ -71,14 +71,104 @@ const getGeminiClient = () => {
   });
 };
 
+interface GeminiUsageEntry {
+  minuteCount: number;
+  minuteResetAt: number;
+  dayCount: number;
+  dayResetAt: number;
+}
+
+const geminiUsage = new Map<string, GeminiUsageEntry>();
+const GEMINI_MAX_INPUT_CHARS = 500;
+const GEMINI_RATE_WINDOW_MS = 60 * 1000;
+const GEMINI_DAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const GEMINI_MAX_REQUESTS_PER_MINUTE = 10;
+const GEMINI_DAILY_LIMITS: Record<string, number> = {
+  "parse-need": 5,
+  "classify-risk": 5,
+  "generate-story": 3,
+  "optimize-profile": 3,
+  "profile-advice": 1,
+  "match-explanation": 10,
+  "generate-human-story": 3,
+  "extract-story-themes": 2,
+};
+const MAX_GEMINI_USAGE_ENTRIES = 5000;
+const profileAdviceCache = new Map<string, { data: any; expiresAt: number }>();
+const MAX_PROFILE_ADVICE_CACHE_SIZE = 1000;
+const geminiMinuteUsage = new Map<string, { count: number; resetAt: number }>();
+
+function getGeminiClientKey(req: express.Request): string {
+  return req.ip || req.socket.remoteAddress || "unknown";
+}
+
+function enforceGeminiBudget(req: express.Request, res: express.Response, endpoint: string): boolean {
+  const now = Date.now();
+  const clientKey = getGeminiClientKey(req);
+  const key = `${endpoint}:${clientKey}`;
+  let usage = geminiUsage.get(key);
+  let minuteUsage = geminiMinuteUsage.get(clientKey);
+
+  if (!usage || usage.minuteResetAt <= now || usage.dayResetAt <= now) {
+    usage = {
+      minuteCount: 0,
+      minuteResetAt: now + GEMINI_RATE_WINDOW_MS,
+      dayCount: usage && usage.dayResetAt > now ? usage.dayCount : 0,
+      dayResetAt: usage && usage.dayResetAt > now ? usage.dayResetAt : now + GEMINI_DAY_WINDOW_MS,
+    };
+    geminiUsage.set(key, usage);
+  }
+  if (!minuteUsage || minuteUsage.resetAt <= now) {
+    minuteUsage = { count: 0, resetAt: now + GEMINI_RATE_WINDOW_MS };
+    geminiMinuteUsage.set(clientKey, minuteUsage);
+  }
+
+  const dailyLimit = GEMINI_DAILY_LIMITS[endpoint] || 3;
+  if (minuteUsage.count >= GEMINI_MAX_REQUESTS_PER_MINUTE) {
+    res.status(429).json({ success: false, error: "Bạn đã đạt giới hạn lượt dùng AI trong một phút. Vui lòng thử lại sau." });
+    return false;
+  }
+  if (usage.dayCount >= dailyLimit) {
+    res.status(429).json({ success: false, error: "Bạn đã đạt giới hạn lượt dùng AI hôm nay. Vui lòng thử lại vào ngày mai." });
+    return false;
+  }
+
+  minuteUsage.count += 1;
+  usage.dayCount += 1;
+
+  if (geminiUsage.size > MAX_GEMINI_USAGE_ENTRIES) {
+    const oldestKey = geminiUsage.keys().next().value;
+    if (oldestKey) geminiUsage.delete(oldestKey);
+  }
+  return true;
+}
+
+function readLimitedText(value: unknown, fieldName: string): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const text = value.trim();
+  if (text.length > GEMINI_MAX_INPUT_CHARS) return null;
+  return text;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, usage] of geminiUsage.entries()) {
+    if (usage.dayResetAt <= now) geminiUsage.delete(key);
+  }
+  for (const [key, usage] of geminiMinuteUsage.entries()) {
+    if (usage.resetAt <= now) geminiMinuteUsage.delete(key);
+  }
+}, 15 * 60 * 1000);
+
 // API Endpoint: Parse Need from Natural Language
 app.post("/api/gemini/parse-need", async (req, res) => {
   try {
-    const { prompt } = req.body;
-    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    if (!enforceGeminiBudget(req, res, "parse-need")) return;
+    const prompt = readLimitedText(req.body?.prompt, "prompt");
+    if (!prompt) {
       return res.status(400).json({
         success: false,
-        error: "Yêu cầu không được để trống.",
+        error: `Yêu cầu phải có nội dung và không dài quá ${GEMINI_MAX_INPUT_CHARS} ký tự.`,
       });
     }
 
@@ -123,6 +213,7 @@ Examples: "This appears to be a simple navigation request." or "Medical emergenc
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
+        maxOutputTokens: 256,
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
@@ -209,7 +300,9 @@ Examples: "This appears to be a simple navigation request." or "Medical emergenc
 // API Endpoint: Classify Risk Only
 app.post("/api/gemini/classify-risk", async (req, res) => {
   try {
-    const { prompt } = req.body;
+    if (!enforceGeminiBudget(req, res, "classify-risk")) return;
+    const prompt = readLimitedText(req.body?.prompt, "prompt");
+    if (!prompt) return res.status(400).json({ success: false, error: `Nội dung phải dài từ 1 đến ${GEMINI_MAX_INPUT_CHARS} ký tự.` });
     const ai = getGeminiClient();
     if (!ai) {
       return res.status(503).json({
@@ -223,6 +316,7 @@ app.post("/api/gemini/classify-risk", async (req, res) => {
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
+        maxOutputTokens: 128,
         systemInstruction:
           "Analyze the user request for safety on a public micro-help app. Return riskLevel (LOW|MEDIUM|HIGH|RESTRICTED), safeForHumanMap (boolean), and reasoningSummary (short user-safe explanation). Money, medical emergency, private home entry, illegal acts are RESTRICTED.",
         responseMimeType: "application/json",
@@ -251,7 +345,14 @@ app.post("/api/gemini/classify-risk", async (req, res) => {
 // API Endpoint: Generate Story Draft
 app.post("/api/gemini/generate-story", async (req, res) => {
   try {
-    const { needTitle, locationName, requesterName, helperName } = req.body;
+    if (!enforceGeminiBudget(req, res, "generate-story")) return;
+    const needTitle = readLimitedText(req.body?.needTitle, "needTitle");
+    const locationName = readLimitedText(req.body?.locationName, "locationName");
+    const requesterName = readLimitedText(req.body?.requesterName, "requesterName");
+    const helperName = readLimitedText(req.body?.helperName, "helperName");
+    if (!needTitle || !locationName || !requesterName || !helperName) {
+      return res.status(400).json({ success: false, error: `Thông tin story không được trống hoặc dài quá ${GEMINI_MAX_INPUT_CHARS} ký tự.` });
+    }
     const ai = getGeminiClient();
     if (!ai) {
       return res.status(503).json({
@@ -266,6 +367,7 @@ app.post("/api/gemini/generate-story", async (req, res) => {
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
+        maxOutputTokens: 256,
         systemInstruction: "You write inspiring short stories of human connection for Human Map in Hanoi Old Quarter.",
         responseMimeType: "application/json",
         responseSchema: {
@@ -291,7 +393,11 @@ app.post("/api/gemini/generate-story", async (req, res) => {
 // API Endpoint: Optimize Profile Bio & Skills with Gemini AI
 app.post("/api/gemini/optimize-profile", async (req, res) => {
   try {
-    const { name, role, currentBio, locationName, skills, totalHelpedCount } = req.body;
+    if (!enforceGeminiBudget(req, res, "optimize-profile")) return;
+    const { name, role, currentBio, locationName, skills, totalHelpedCount } = req.body || {};
+    if ([name, role, currentBio, locationName].some((value) => value !== undefined && typeof value !== "string")) {
+      return res.status(400).json({ success: false, error: "Thông tin hồ sơ không hợp lệ." });
+    }
     const ai = getGeminiClient();
 
     if (!ai) {
@@ -326,6 +432,7 @@ Yêu cầu:
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
+        maxOutputTokens: 256,
         systemInstruction: "Bạn là trợ lý viết hồ sơ cá nhân truyền cảm hứng, ngắn gọn, ấm áp cho cộng đồng Human Map.",
         responseMimeType: "application/json",
         responseSchema: {
@@ -360,7 +467,11 @@ Yêu cầu:
 // API Endpoint: Gemini Profile Impact & Community Advice
 app.post("/api/gemini/profile-advice", async (req, res) => {
   try {
-    const { name, locationName, totalHelpedCount, skills, role } = req.body;
+    const { name, locationName, totalHelpedCount, skills, role } = req.body || {};
+    const cacheKey = JSON.stringify({ name, locationName, totalHelpedCount, skills, role });
+    const cachedAdvice = profileAdviceCache.get(cacheKey);
+    if (cachedAdvice && cachedAdvice.expiresAt > Date.now()) return res.json({ success: true, data: cachedAdvice.data, cached: true });
+    if (!enforceGeminiBudget(req, res, "profile-advice")) return;
     const ai = getGeminiClient();
 
     if (!ai) {
@@ -394,6 +505,7 @@ Hãy tạo phân tích tiếng Việt ngắn gọn, giàu cảm hứng:
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
+        maxOutputTokens: 256,
         systemInstruction: "Bạn là trợ lý đánh giá tác động xã hội và bảo mật an toàn cho Human Map.",
         responseMimeType: "application/json",
         responseSchema: {
@@ -411,6 +523,11 @@ Hãy tạo phân tích tiếng Việt ngắn gọn, giàu cảm hứng:
     });
 
     const parsed = JSON.parse(response.text || "{}");
+    profileAdviceCache.set(cacheKey, { data: parsed, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
+    if (profileAdviceCache.size > MAX_PROFILE_ADVICE_CACHE_SIZE) {
+      const oldestKey = profileAdviceCache.keys().next().value;
+      if (oldestKey) profileAdviceCache.delete(oldestKey);
+    }
     return res.json({ success: true, data: parsed });
   } catch (err: any) {
     return res.json({
@@ -429,7 +546,11 @@ Hãy tạo phân tích tiếng Việt ngắn gọn, giàu cảm hứng:
 // API Endpoint: Generate Match Explanation
 app.post("/api/gemini/match-explanation", async (req, res) => {
   try {
-    const { needTitle, helperName, helperDistance, helperSkills, completedHelps } = req.body;
+    if (!enforceGeminiBudget(req, res, "match-explanation")) return;
+    const { needTitle, helperName, helperDistance, helperSkills, completedHelps } = req.body || {};
+    if (!readLimitedText(needTitle, "needTitle") || !readLimitedText(helperName, "helperName")) {
+      return res.status(400).json({ success: false, error: `Thông tin ghép nối không được trống hoặc dài quá ${GEMINI_MAX_INPUT_CHARS} ký tự.` });
+    }
     const ai = getGeminiClient();
     if (!ai) {
       return res.status(503).json({
@@ -445,6 +566,7 @@ app.post("/api/gemini/match-explanation", async (req, res) => {
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
+        maxOutputTokens: 128,
         systemInstruction: "You generate short 1-sentence product match explanations for Human Map app. Example: 'Minh is nearby, available now, and has helped with navigation several times.'",
         responseMimeType: "application/json",
         responseSchema: {
@@ -467,7 +589,11 @@ app.post("/api/gemini/match-explanation", async (req, res) => {
 // API Endpoint Phase 5: Generate Human Story
 app.post("/api/gemini/generate-human-story", async (req, res) => {
   try {
-    const { userReflection, needTitle, locationName, requesterName, helperName } = req.body;
+    if (!enforceGeminiBudget(req, res, "generate-human-story")) return;
+    const { userReflection, needTitle, locationName, requesterName, helperName } = req.body || {};
+    if ([userReflection, needTitle, locationName, requesterName, helperName].some((value) => value !== undefined && (typeof value !== "string" || value.length > GEMINI_MAX_INPUT_CHARS))) {
+      return res.status(400).json({ success: false, error: `Nội dung story không được dài quá ${GEMINI_MAX_INPUT_CHARS} ký tự mỗi trường.` });
+    }
     const ai = getGeminiClient();
     if (!ai) {
       return res.status(503).json({
@@ -504,6 +630,7 @@ Generate a polished human story adhering strictly to the non-invention and quote
       model: "gemini-3.6-flash",
       contents: userPrompt,
       config: {
+        maxOutputTokens: 512,
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
@@ -532,10 +659,11 @@ Generate a polished human story adhering strictly to the non-invention and quote
 // API Endpoint: Dynamic Story Theme Discovery & Clustering with Gemini
 app.post("/api/gemini/extract-story-themes", async (req, res) => {
   try {
-    const { stories } = req.body;
+    if (!enforceGeminiBudget(req, res, "extract-story-themes")) return;
+    const { stories } = req.body || {};
     const ai = getGeminiClient();
 
-    if (!Array.isArray(stories) || stories.length === 0) {
+    if (!Array.isArray(stories) || stories.length === 0 || stories.length > 50 || JSON.stringify(stories).length > 20000) {
       return res.json({
         success: true,
         data: {
@@ -591,6 +719,7 @@ Yêu cầu:
       model: "gemini-3.6-flash",
       contents: prompt,
       config: {
+        maxOutputTokens: 512,
         systemInstruction: "Bạn là chuyên gia phân tích chủ đề cộng đồng và tâm lý xã hội học cho ứng dụng Human Map.",
         responseMimeType: "application/json",
         responseSchema: {

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { NeedRequest, Story, UserProfile, MapMarkerType, RouteResult, MeetingPoint } from '../types';
 import { HANOI_CENTER } from '../data/mockData';
-import { LocateFixed, Loader2, Navigation, MapPin, X } from 'lucide-react';
+import { LocateFixed, Loader2, Navigation, MapPin } from 'lucide-react';
 
 interface MapVinaMapProps {
   needs: NeedRequest[];
@@ -12,6 +12,7 @@ interface MapVinaMapProps {
   activeRoute?: RouteResult | null;
   meetingPoint?: MeetingPoint | null;
   onUserLocationChange?: (coords: { lat: number; lng: number }) => void;
+  onGoHome: () => void;
   onSelectMarker: (item: { type: MapMarkerType; item: NeedRequest | Story | UserProfile }) => void;
 }
 
@@ -23,6 +24,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
   activeRoute,
   meetingPoint,
   onUserLocationChange,
+  onGoHome,
   onSelectMarker,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -38,21 +40,13 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
   });
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [locationStatus, setLocationStatus] = useState<string | null>(null);
-  const [showLocationBanner, setShowLocationBanner] = useState<boolean>(() => {
-    // Check if user has already dismissed or handled location prompt
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('humanmap_location_banner_dismissed') !== 'true';
-    }
-    return true;
-  });
-  const [hasAcquiredLocation, setHasAcquiredLocation] = useState<boolean>(false);
+  const [permissionState, setPermissionState] = useState<'checking' | 'prompt' | 'granted' | 'denied'>('checking');
 
   // Sync user location update
   const handleLocationUpdate = (latitude: number, longitude: number, isInitial: boolean = false) => {
     const newPos = { lat: latitude, lng: longitude };
     setUserCoords(newPos);
-    setHasAcquiredLocation(true);
-    setShowLocationBanner(false);
+    setPermissionState('granted');
     try {
       localStorage.setItem('humanmap_location_banner_dismissed', 'true');
     } catch {
@@ -72,6 +66,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
   const locateUserPosition = (silent: boolean = false) => {
     if (!navigator.geolocation) {
       if (!silent) setLocationStatus('Trình duyệt không hỗ trợ Geolocation.');
+      setPermissionState('denied');
       return;
     }
 
@@ -86,6 +81,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
       (position) => {
         const { latitude, longitude } = position.coords;
         setIsLocating(false);
+        setPermissionState('granted');
         if (!silent) {
           setLocationStatus(`Đã cập nhật vị trí thực tế: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
         }
@@ -108,8 +104,15 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
       (error) => {
         setIsLocating(false);
         console.warn('Geolocation error:', error);
+        if (error.code === error.PERMISSION_DENIED) {
+          setPermissionState('denied');
+        }
         if (!silent) {
-          setLocationStatus('Chưa thể lấy GPS. Bạn có thể cấp quyền trong trình duyệt.');
+          setLocationStatus(
+            error.code === error.PERMISSION_DENIED
+              ? 'Bạn chưa cấp quyền vị trí. Hãy bật quyền trong trình duyệt rồi thử lại.'
+              : 'Chưa thể lấy GPS. Vui lòng thử lại.'
+          );
           setTimeout(() => setLocationStatus(null), 4000);
         }
       },
@@ -128,7 +131,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
         .query({ name: 'geolocation' })
         .then((permissionStatus) => {
           if (permissionStatus.state === 'granted') {
-            setShowLocationBanner(false);
+            setPermissionState('granted');
             try {
               localStorage.setItem('humanmap_location_banner_dismissed', 'true');
             } catch {
@@ -137,33 +140,32 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
             // Auto acquire position silently since permission is already granted
             locateUserPosition(true);
           } else if (permissionStatus.state === 'denied') {
-            setShowLocationBanner(false);
+            setPermissionState('denied');
+          } else {
+            setPermissionState('prompt');
           }
 
           permissionStatus.onchange = () => {
             if (permissionStatus.state === 'granted') {
-              setShowLocationBanner(false);
+              setPermissionState('granted');
               locateUserPosition(true);
+            } else if (permissionStatus.state === 'denied') {
+              setPermissionState('denied');
+            } else {
+              setPermissionState('prompt');
             }
           };
         })
         .catch(() => {
           // Geolocation query permission not supported in some browsers
+          setPermissionState('prompt');
         });
+        } else {
+          setPermissionState('prompt');
     }
   }, []);
 
-  const handleDismissBanner = () => {
-    setShowLocationBanner(false);
-    try {
-      localStorage.setItem('humanmap_location_banner_dismissed', 'true');
-    } catch {
-      // ignore
-    }
-  };
-
   const handleRequestLocationFromBanner = () => {
-    handleDismissBanner();
     locateUserPosition(false);
   };
 
@@ -178,6 +180,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
   // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
+    if (permissionState !== 'granted') return;
 
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
@@ -221,7 +224,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [permissionState]);
 
   // Sync coords and pan map when currentUser location changes (e.g. province switched)
   useEffect(() => {
@@ -413,26 +416,29 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
 
   return (
     <div className="relative w-full h-full">
-      <div ref={mapContainerRef} className="w-full h-full z-10" />
+      {permissionState === 'granted' && <div ref={mapContainerRef} className="w-full h-full z-10" />}
 
       {/* Location Access Indicator Banner */}
-      {showLocationBanner && !hasAcquiredLocation && (
-        <div className="absolute top-16 left-3 right-16 md:right-auto md:max-w-xl z-20 clay-card shadow-[0_20px_50px_rgba(0,0,0,0.25)] p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-fade-in">
+      {permissionState !== 'granted' && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/35 p-4 animate-fade-in">
+          <div className="clay-card shadow-[0_20px_50px_rgba(0,0,0,0.25)] p-5 max-w-md w-full text-xs">
           <div className="flex items-start gap-2.5">
             <div className="p-2 clay-pill-pink text-[#2563EB] shrink-0 mt-0.5">
               <MapPin className="w-4 h-4 animate-bounce text-[#2563EB]" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
-                <span>Xác định vị trí trên bản đồ MapVina</span>
+                <span>{permissionState === 'denied' ? 'Không thể hiển thị bản đồ' : 'Cấp quyền để xem bản đồ MapVina'}</span>
               </div>
               <p className="text-slate-600 text-[11px] leading-relaxed mt-0.5">
-                Ứng dụng cần định vị GPS để hiển thị khoảng cách thực tế và các ca cần hỗ trợ khẩn cấp gần bạn nhất.
+                {permissionState === 'denied'
+                  ? 'Bạn đã từ chối quyền vị trí. Hãy bật lại quyền vị trí cho trang web trong cài đặt trình duyệt, sau đó thử cấp quyền lại.'
+                  : 'Ứng dụng cần quyền định vị GPS để hiển thị bản đồ và các ca cần hỗ trợ gần bạn nhất.'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0 mt-3">
             <button
               onClick={handleRequestLocationFromBanner}
               disabled={isLocating}
@@ -451,13 +457,13 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
               )}
             </button>
             <button
-              onClick={handleDismissBanner}
-              className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-xl transition-colors cursor-pointer"
-              title="Đóng thông báo"
+              onClick={onGoHome}
+              className="clay-btn-white py-1.5 px-3.5 text-slate-700 font-bold cursor-pointer text-xs"
             >
-              <X className="w-4 h-4" />
+              Về trang chủ
             </button>
           </div>
+        </div>
         </div>
       )}
 

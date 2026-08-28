@@ -563,6 +563,7 @@ export default function App() {
             users={userProfile ? [userProfile] : []}
             currentUser={userProfile}
             onUserLocationChange={handleUserLocationChange}
+            onGoHome={() => setActiveTab('home')}
             onSelectNeed={setSelectedNeed}
             onSelectStory={setSelectedStory}
           />
