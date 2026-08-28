@@ -97,7 +97,8 @@ let isFirebaseConfigured = false;
 try {
   const metaEnv = (import.meta as any).env || {};
   const firebaseConfig = {
-    apiKey: firebaseAppletConfig.apiKey || metaEnv.VITE_FIREBASE_API_KEY || (window as any).__FIREBASE_CONFIG__?.apiKey,
+    apiKey: process.env.API_KEY || metaEnv.VITE_FIREBASE_API_KEY || (window as any).__FIREBASE_CONFIG__?.apiKey ||
+      (firebaseAppletConfig.apiKey !== 'API_KEY' ? firebaseAppletConfig.apiKey : ''),
     authDomain: firebaseAppletConfig.authDomain || metaEnv.VITE_FIREBASE_AUTH_DOMAIN || (window as any).__FIREBASE_CONFIG__?.authDomain,
     projectId: firebaseAppletConfig.projectId || metaEnv.VITE_FIREBASE_PROJECT_ID || (window as any).__FIREBASE_CONFIG__?.projectId,
     storageBucket: firebaseAppletConfig.storageBucket || metaEnv.VITE_FIREBASE_STORAGE_BUCKET || (window as any).__FIREBASE_CONFIG__?.storageBucket,
