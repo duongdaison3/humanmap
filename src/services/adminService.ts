@@ -22,7 +22,7 @@ export const adminService = {
     const user = dataService.getCurrentFirebaseUser();
     if (!user) return null;
 
-    const token = await user.getIdTokenResult();
+    const token = await user.getIdTokenResult(true);
     const claims = token.claims as { admin?: boolean; role?: string; permissions?: string[] };
     const role = claims.role === 'moderator' || claims.role === 'support' ? claims.role : claims.admin ? 'admin' : null;
     if (!role) return null;
