@@ -35,8 +35,6 @@ export const MapView: React.FC<MapViewProps> = ({
   const [isCalculatingRoute, setIsCalculatingRoute] = useState<boolean>(false);
   const [routingError, setRoutingError] = useState<string | null>(null);
 
-  const mapvinaKey = mapsService.MAPVINA_KEY;
-
   // Filter markers based on selection
   const activeNeeds = filter === 'all' || filter === 'need' ? needs.filter((n) => n.status === 'open') : [];
   const activeStories = filter === 'all' || filter === 'story' ? stories : [];
@@ -135,7 +133,6 @@ export const MapView: React.FC<MapViewProps> = ({
           activeRoute={activeRoute}
           onUserLocationChange={onUserLocationChange}
           onSelectMarker={(selected) => setSelectedItem(selected)}
-          mapvinaKey={mapvinaKey}
         />
       </div>
 

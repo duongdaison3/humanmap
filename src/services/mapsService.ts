@@ -9,26 +9,9 @@ import { HANOI_CENTER } from '../data/mockData';
 import { RouteResult } from '../types';
 import { dataService } from './dataService';
 
-export const MAPVINA_DEFAULT_KEY = 'f219536c3e298896817864116351fffecc';
-
 export const mapsService = {
-  /**
-   * MapVina API configuration
-   */
-  MAPVINA_KEY:
-    process.env.MAPVINA_API_KEY ||
-    (import.meta as any).env?.VITE_MAPVINA_API_KEY ||
-    (globalThis as any).MAPVINA_API_KEY ||
-    MAPVINA_DEFAULT_KEY,
-
-  getMapVinaStyleUrl(key?: string): string {
-    const k = key || this.MAPVINA_KEY;
-    return `https://maps.mapvina.com/styles/v2/streets.json?key=${k}`;
-  },
-
-  getMapVinaTileUrl(key?: string): string {
-    const k = key || this.MAPVINA_KEY;
-    return `https://maps.mapvina.com/api/v1/tile/{z}/{x}/{y}.png?key=${k}`;
+  getMapVinaTileUrl(): string {
+    return '/api/mapvina/tile/{z}/{x}/{y}.png';
   },
 
   /**

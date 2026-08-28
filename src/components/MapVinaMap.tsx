@@ -13,7 +13,6 @@ interface MapVinaMapProps {
   meetingPoint?: MeetingPoint | null;
   onUserLocationChange?: (coords: { lat: number; lng: number }) => void;
   onSelectMarker: (item: { type: MapMarkerType; item: NeedRequest | Story | UserProfile }) => void;
-  mapvinaKey: string;
 }
 
 export const MapVinaMap: React.FC<MapVinaMapProps> = ({
@@ -25,7 +24,6 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
   meetingPoint,
   onUserLocationChange,
   onSelectMarker,
-  mapvinaKey,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -189,7 +187,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
       });
 
       // Primary MapVina Tile Layer
-      const mapvinaTileUrl = `https://maps.mapvina.com/api/v1/tile/{z}/{x}/{y}.png?key=${mapvinaKey}`;
+      const mapvinaTileUrl = '/api/mapvina/tile/{z}/{x}/{y}.png';
       const mapvinaLayer = L.tileLayer(mapvinaTileUrl, {
         maxZoom: 19,
         attribution: '&copy; <a href="https://mapvina.com" target="_blank" rel="noopener">MapVina</a>',
@@ -223,7 +221,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [mapvinaKey]);
+  }, []);
 
   // Sync coords and pan map when currentUser location changes (e.g. province switched)
   useEffect(() => {

@@ -22,6 +22,30 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// MapVina proxy: keeps the provider key on the server, never in the browser bundle.
+app.get("/api/mapvina/tile/:z/:x/:y.png", async (req, res) => {
+  const apiKey = process.env.MAPVINA_API_KEY;
+  const { z, x, y } = req.params;
+  if (!apiKey || !/^\d+$/.test(z) || !/^\d+$/.test(x) || !/^\d+$/.test(y)) {
+    return res.status(404).end();
+  }
+
+  try {
+    const upstream = await fetch(
+      `https://maps.mapvina.com/api/v1/tile/${z}/${x}/${y}.png?key=${encodeURIComponent(apiKey)}`
+    );
+    if (!upstream.ok || !upstream.body) return res.status(upstream.status || 502).end();
+    res.status(upstream.status);
+    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const buffer = Buffer.from(await upstream.arrayBuffer());
+    return res.send(buffer);
+  } catch (error) {
+    console.error('MapVina tile proxy error:', error);
+    return res.status(502).end();
+  }
+});
+
 // API Endpoint: Health Check
 app.get("/api/health", (req, res) => {
   res.json({

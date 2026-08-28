@@ -6,10 +6,6 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(process.env.GOOGLE_MAPS_PLATFORM_KEY || ''),
-      'process.env.MAPVINA_API_KEY': JSON.stringify(process.env.MAPVINA_API_KEY || 'f219536c3e298896817864116351fffecc')
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
