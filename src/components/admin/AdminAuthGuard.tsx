@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldAlert, LogIn, Loader2 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
+import { dataService } from '../../services/dataService';
 import { AdminIdentity } from '../../types';
 
 interface AdminAuthGuardProps {
@@ -12,7 +13,31 @@ export const AdminAuthGuard: React.FC<AdminAuthGuardProps> = ({ children }) => {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    adminService.getIdentity().then(setIdentity).finally(() => setIsChecking(false));
+    let isActive = true;
+    const unsubscribe = dataService.subscribeToAuth(async (user) => {
+      if (!isActive) return;
+      if (!user) {
+        setIdentity(null);
+        setIsChecking(false);
+        return;
+      }
+
+      setIsChecking(true);
+      try {
+        const nextIdentity = await adminService.getIdentity();
+        if (isActive) setIdentity(nextIdentity);
+      } catch (error) {
+        console.warn('Không thể kiểm tra quyền admin:', error);
+        if (isActive) setIdentity(null);
+      } finally {
+        if (isActive) setIsChecking(false);
+      }
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
   }, []);
 
   if (isChecking) {
