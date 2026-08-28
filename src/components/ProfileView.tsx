@@ -129,8 +129,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Load Gemini AI Advice on mount
   useEffect(() => {
+    if (!isAuthenticated) {
+      setAiAdvice(null);
+      return;
+    }
     fetchAIAdvice();
-  }, [user.id, user.totalHelpedCount]);
+  }, [isAuthenticated, user.id, user.totalHelpedCount]);
 
   const fetchAIAdvice = async () => {
     setIsAILoadingAdvice(true);
@@ -297,6 +301,52 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     await dataService.updateUserProfile(updated);
     onUserUpdate(updated);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-4xl mx-auto min-h-[55vh] flex items-center justify-center pb-24 animate-fade-in">
+        <div className="clay-card w-full max-w-md p-7 sm:p-9 text-center space-y-5">
+          <div className="clay-pill-blue w-16 h-16 mx-auto flex items-center justify-center text-[#2563EB]">
+            <UserCheck className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="font-serif font-black text-xl text-slate-900">Đăng nhập để mở hồ sơ</h2>
+            <p className="text-xs leading-relaxed text-slate-500 font-medium">
+              Đăng nhập hoặc đăng ký để quản lý thông tin cá nhân, cài đặt riêng tư và lưu lại những câu chuyện của bạn.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
+            <button
+              type="button"
+              onClick={handleOpenSignIn}
+              className="clay-btn-primary px-5 py-3 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Đăng nhập</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenSignUp}
+              className="clay-btn-white px-5 py-3 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Đăng ký tài khoản</span>
+            </button>
+          </div>
+        </div>
+
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={(updatedUser) => {
+            onUserUpdate(updatedUser);
+            setActiveTab('impact');
+          }}
+          initialMode={authModalMode}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-24 animate-fade-in">
