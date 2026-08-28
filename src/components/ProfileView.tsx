@@ -17,7 +17,6 @@ import {
   Camera,
   Sparkles,
   RefreshCw,
-  Upload,
   Check,
   Bot,
   Zap,
@@ -37,40 +36,10 @@ interface ProfileViewProps {
   onSelectStory: (story: Story) => void;
 }
 
-const AVATAR_PRESETS = [
-  {
-    label: 'Nam thanh niên Phố Cổ',
-    url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=250&auto=format&fit=crop&q=80',
-  },
-  {
-    label: 'Nữ tình nguyện viên',
-    url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=250&auto=format&fit=crop&q=80',
-  },
-  {
-    label: 'Người dẫn đường địa phương',
-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=250&auto=format&fit=crop&q=80',
-  },
-  {
-    label: 'Sinh viên Hà Nội',
-    url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=250&auto=format&fit=crop&q=80',
-  },
-  {
-    label: 'Bác hướng dẫn viên',
-    url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=250&auto=format&fit=crop&q=80',
-  },
-  {
-    label: 'Bác gái thân thiện',
-    url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=250&auto=format&fit=crop&q=80',
-  },
-  {
-    label: 'Thành viên năng động',
-    url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=250&auto=format&fit=crop&q=80',
-  },
-  {
-    label: 'Bạn trẻ nhiệt huyết',
-    url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=250&auto=format&fit=crop&q=80',
-  },
-];
+const AVATAR_PRESETS = Array.from({ length: 9 }, (_, index) => ({
+  label: `Avatar mẫu ${index + 1}`,
+  url: `/avatar/${index + 1}.png`,
+}));
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   user,
@@ -95,7 +64,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Avatar Picker Modal State
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-  const [customAvatarUrl, setCustomAvatarUrl] = useState('');
 
   // Gemini AI Profile Optimization State
   const [isAIOptimizing, setIsAIOptimizing] = useState(false);
@@ -201,32 +169,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     await dataService.updateUserProfile(updated);
     onUserUpdate(updated);
     setIsAvatarModalOpen(false);
-  };
-
-  const handleApplyCustomAvatarUrl = async () => {
-    if (!customAvatarUrl.trim()) return;
-    const updated = { ...user, avatar: customAvatarUrl.trim() };
-    await dataService.updateUserProfile(updated);
-    onUserUpdate(updated);
-    setCustomAvatarUrl('');
-    setIsAvatarModalOpen(false);
-  };
-
-  const handleFileUploadAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const base64Url = evt.target?.result as string;
-      if (base64Url) {
-        const updated = { ...user, avatar: base64Url };
-        await dataService.updateUserProfile(updated);
-        onUserUpdate(updated);
-        setIsAvatarModalOpen(false);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // Gemini AI Optimization Trigger
@@ -880,7 +822,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-800">Thay đổi ảnh đại diện</h3>
-                  <p className="text-[11px] text-slate-500 font-medium">Chọn mẫu có sẵn hoặc tải ảnh mới</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Chọn một trong 9 ảnh mẫu của hệ thống</p>
                 </div>
               </div>
               <button
@@ -894,7 +836,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* PRESET AVATAR GRID */}
             <div>
               <span className="text-xs font-bold text-slate-700 block mb-2">Bộ avatar cộng đồng:</span>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {AVATAR_PRESETS.map((preset, idx) => (
                   <button
                     key={idx}
@@ -916,43 +858,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
             </div>
 
-            {/* FILE UPLOAD & CUSTOM URL */}
-            <div className="space-y-2.5 pt-2 border-t border-slate-100 text-xs">
-              <div>
-                <span className="font-bold text-slate-700 block mb-1">Tải ảnh từ thiết bị:</span>
-                <label className="clay-input w-full py-2 px-3 text-xs font-bold text-slate-700 flex items-center justify-center gap-2 cursor-pointer hover:border-[#2563EB] transition-colors">
-                  <Upload className="w-3.5 h-3.5 text-[#2563EB]" />
-                  <span>Chọn ảnh từ máy</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUploadAvatar}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              <div>
-                <span className="font-bold text-slate-700 block mb-1">Hoặc dán URL ảnh:</span>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={customAvatarUrl}
-                    onChange={(e) => setCustomAvatarUrl(e.target.value)}
-                    placeholder="https://example.com/avatar.jpg"
-                    className="clay-input flex-1 px-3 py-1.5 text-xs font-medium text-slate-800 outline-hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyCustomAvatarUrl}
-                    disabled={!customAvatarUrl.trim()}
-                    className="clay-btn-primary px-3 py-1.5 text-white font-bold text-xs cursor-pointer disabled:opacity-50"
-                  >
-                    Lưu
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       )}
