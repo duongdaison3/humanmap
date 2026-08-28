@@ -46,13 +46,13 @@ export const AppShell: React.FC<AppShellProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F2EB] text-[#1E293B] flex flex-col font-sans">
+    <div className="min-h-screen bg-transparent text-[#1E293B] flex flex-col font-sans">
       {/* Top Brand Header */}
-      <header className="sticky top-0 z-30 bg-[#FFFFFF]/90 backdrop-blur-md border-b border-white/80 shadow-[0_8px_20px_rgba(175,155,135,0.08)]">
+      <header className="sticky top-0 z-30 bg-white/45 backdrop-blur-xl border-b border-white/70 shadow-[0_8px_28px_rgba(30,64,78,0.08)]">
         {showBanner && <SafetyBanner onClose={() => setShowBanner(false)} />}
         {notificationBanner}
 
-        <div className="max-w-md sm:max-w-2xl lg:max-w-5xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+        <div className="max-w-md sm:max-w-2xl lg:max-w-5xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2 min-h-16">
           {/* Logo & Dynamic Province Switcher Badge */}
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             <HumanMapLogo variant="horizontal" size="md" provinceName={currentProvince.name} />
@@ -88,7 +88,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
 
         {/* Tagline Sub-bar */}
-        <div className="bg-[#FAF7F2]/80 border-t border-white/60 py-1 px-4 text-center">
+        <div className="bg-white/30 border-t border-white/50 py-1.5 px-4 text-center backdrop-blur-md">
           <p className="text-[11px] text-stone-600 font-serif italic hidden sm:block">
             "Google Maps giúp bạn tìm địa điểm. Human Map giúp bạn tìm thấy con người khắp 63 tỉnh thành."
           </p>
@@ -122,7 +122,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-md sm:max-w-2xl lg:max-w-5xl w-full mx-auto p-4 pb-24">
+      <main className="flex-1 max-w-md sm:max-w-2xl lg:max-w-5xl w-full mx-auto p-3 sm:p-4 pb-28 sm:pb-24">
         {children}
       </main>
     </div>

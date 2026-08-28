@@ -75,13 +75,13 @@ export const MapView: React.FC<MapViewProps> = ({
   }, [selectedItem, currentUser]);
 
   return (
-    <div className="relative w-full h-[calc(100vh-8rem)] min-h-[500px] bg-slate-100 rounded-3xl overflow-hidden shadow-inner flex flex-col">
+    <div className="relative w-full h-[min(72dvh,760px)] min-h-[420px] sm:h-[calc(100vh-8rem)] sm:min-h-[500px] bg-slate-100/80 rounded-2xl sm:rounded-3xl overflow-hidden shadow-inner flex flex-col">
       {/* Top Map Control & Filter Bar */}
       <div className="absolute top-3.5 left-3.5 right-3.5 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-auto">
         <div className="flex items-center gap-1.5 clay-card p-1.5 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`min-h-11 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
               filter === 'all' ? 'clay-btn-dark text-white' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -89,7 +89,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </button>
           <button
             onClick={() => setFilter('need')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`min-h-11 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               filter === 'need' ? 'clay-btn-primary text-white' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -100,7 +100,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </button>
           <button
             onClick={() => setFilter('help')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`min-h-11 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               filter === 'help' ? 'clay-btn-emerald text-white' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -111,7 +111,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </button>
           <button
             onClick={() => setFilter('story')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`min-h-11 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               filter === 'story' ? 'clay-btn-primary text-white' : 'text-slate-600 hover:text-slate-900'
             }`}
           >

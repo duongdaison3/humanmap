@@ -47,15 +47,15 @@ export const StoryCard: React.FC<StoryCardProps> = ({
             </p>
           )}
 
-          <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-2 font-medium">
+          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-2 font-medium">
             {story.body}
           </p>
         </div>
       </div>
 
       {/* Footer Info & Action */}
-      <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-2 flex items-center justify-between border-t border-slate-100 text-xs text-slate-600">
-        <div className="clay-pill flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold text-slate-700">
+      <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-3 flex items-center justify-between border-t border-slate-100 text-sm text-slate-600 gap-2">
+        <div className="clay-pill flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 min-w-0">
           <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
           <span>{story.locationName.split(',')[0]}</span>
         </div>
@@ -66,7 +66,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
               e.stopPropagation();
               if (onLike) onLike(story.id);
             }}
-            className="clay-btn-white flex items-center gap-1.5 px-3 py-1 text-[#2563EB] font-bold text-xs cursor-pointer"
+            className="clay-btn-white flex items-center gap-1.5 px-3 py-2 text-[#2563EB] font-bold text-sm cursor-pointer min-h-11"
           >
             <Heart className="w-3.5 h-3.5 fill-[#2563EB]" />
             <span>{story.likesCount}</span>
@@ -74,7 +74,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 
           <button
             onClick={() => onSelect(story)}
-            className="clay-btn-white flex items-center gap-1.5 px-3.5 py-1 font-bold text-slate-800 group-hover:text-[#2563EB] cursor-pointer"
+            className="clay-btn-white flex items-center gap-1.5 px-3.5 py-2 font-bold text-slate-800 group-hover:text-[#2563EB] cursor-pointer min-h-11"
           >
             <span>Đọc tiếp</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />

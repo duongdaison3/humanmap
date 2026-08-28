@@ -151,13 +151,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="relative w-full max-w-md clay-card shadow-[0_25px_60px_rgba(0,0,0,0.3)] overflow-hidden"
+        className="relative w-full max-w-md max-h-[min(92dvh,860px)] overflow-y-auto clay-card shadow-[0_25px_60px_rgba(0,0,0,0.3)]"
       >
         {/* Header Header Pattern */}
         <div className="bg-linear-to-r from-[#2563EB] via-[#16A34A] to-[#F59E0B] text-white p-6 pt-7 relative overflow-hidden text-center shadow-md">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+            className="absolute top-3 right-3 min-w-11 min-h-11 flex items-center justify-center text-white/80 hover:text-white rounded-full hover:bg-white/20 transition-colors cursor-pointer"
             aria-label="Đóng"
           >
             <X className="w-5 h-5" />
@@ -214,7 +214,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="clay-btn-white w-full py-3 px-4 text-slate-800 font-bold text-xs flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
+                className="clay-btn-white w-full min-h-11 py-3 px-4 text-slate-800 font-bold text-sm flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path

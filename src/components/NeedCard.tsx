@@ -31,7 +31,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
               <h4 className="font-bold text-slate-800 text-xs sm:text-sm leading-tight">
                 {need.requesterName}
               </h4>
-              <p className="text-[11px] text-slate-500 font-medium">{need.requesterRole}</p>
+              <p className="text-xs text-slate-500 font-medium">{need.requesterRole}</p>
             </div>
           </div>
           <SafetyBadge showText={!compact} />
@@ -49,15 +49,15 @@ export const NeedCard: React.FC<NeedCardProps> = ({
 
         {/* Badges: Distance, Time, Category */}
         <div className="flex flex-wrap items-center gap-2 text-xs my-2.5">
-          <span className="clay-pill inline-flex items-center gap-1 text-slate-700 px-3 py-1 font-semibold text-[11px]">
+          <span className="clay-pill inline-flex items-center gap-1 text-slate-700 px-3 py-1.5 font-semibold text-xs">
             <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
             {need.locationName.split(',')[0]} (~{need.distanceMeters}m)
           </span>
-          <span className="clay-pill-blue inline-flex items-center gap-1 text-[#2563EB] px-3 py-1 font-semibold text-[11px]">
+          <span className="clay-pill-blue inline-flex items-center gap-1 text-[#2563EB] px-3 py-1.5 font-semibold text-xs">
             <Clock className="w-3.5 h-3.5 text-[#2563EB]" />
             ~{need.estMinutes} phút
           </span>
-          <span className="clay-pill text-slate-600 px-3 py-1 text-[11px] font-medium">
+          <span className="clay-pill text-slate-600 px-3 py-1.5 text-xs font-medium">
             {need.categoryLabel}
           </span>
         </div>
@@ -66,7 +66,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
       {/* CTA Button */}
       <button
         onClick={() => onSelect(need)}
-        className="clay-btn-primary mt-3 w-full py-2.5 px-4 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+        className="clay-btn-primary mt-3 w-full min-h-11 py-2.5 px-4 text-white text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
       >
         <span>Tôi có thể giúp</span>
         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
