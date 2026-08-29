@@ -5,20 +5,27 @@ interface SafetyBadgeProps {
   level?: 'verified_safe' | 'low_risk';
   showText?: boolean;
   className?: string;
+  text?: string;
+  size?: 'small' | 'default';
 }
 
 export const SafetyBadge: React.FC<SafetyBadgeProps> = ({
   level = 'verified_safe',
   showText = true,
   className = '',
+  text,
+  size = 'default',
 }) => {
+  const resolvedText = text || 'Micro-Help An Toàn';
+  const sizeClass = size === 'small' ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs';
+
   return (
     <div
-      className={`clay-pill-emerald inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-emerald-800 ${className}`}
+      className={`clay-pill-emerald inline-flex items-center gap-1.5 ${sizeClass} font-bold text-emerald-800 ${className}`}
       title="Micro-Help An Toàn: Gặp gỡ nơi công cộng, không giao dịch tài chính, không can thiệp y tế."
     >
-      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-      {showText && <span>Micro-Help An Toàn</span>}
+      <ShieldCheck className={`${size === 'small' ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-emerald-600 shrink-0`} />
+      {showText && <span>{resolvedText}</span>}
     </div>
   );
 };

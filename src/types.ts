@@ -94,6 +94,7 @@ export interface UserProfile {
   savedStoryIds: string[];
   isHelperAvailable: boolean;
   reliabilityScore?: number;
+  interests?: string[];
   skills?: string[];
   preferredCategories?: NeedCategory[];
   authProvider?: 'google' | 'password' | 'demo';

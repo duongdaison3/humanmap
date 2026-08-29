@@ -363,9 +363,6 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                 <h3 className="font-serif font-bold text-lg text-slate-900">
                   Bạn cần trợ giúp điều gì xung quanh?
                 </h3>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  Diễn đạt tự nhiên bằng lời nói hoặc văn bản. Gemini AI sẽ thấu hiểu và chuyển thành hành động phù hợp.
-                </p>
               </div>
 
               {/* Natural Language Input Box with Voice Button */}
@@ -424,7 +421,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   className="clay-btn-primary w-full py-3.5 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Sparkles className="w-4 h-4 text-amber-200" />
-                  <span>Phân tích yêu cầu bằng AI</span>
+                  <span>Phân tích yêu cầu</span>
                 </button>
               </div>
             </div>

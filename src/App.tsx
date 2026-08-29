@@ -418,10 +418,6 @@ export default function App() {
                 <span className="text-[#F59E0B] not-italic font-sans font-extrabold">Human Map</span> giúp bạn tìm thấy con người."
               </h2>
 
-              <p className="text-[#EEE7DE] text-xs sm:text-sm max-w-xl leading-relaxed">
-                Human Map giúp bạn tìm thấy những cơ hội nhỏ để kết nối và giúp đỡ mọi người xung quanh tại {currentProvince.name} và khắp 63 tỉnh thành Việt Nam.
-              </p>
-
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <button
                   onClick={() => setActiveTab('map')}
@@ -436,16 +432,6 @@ export default function App() {
                   className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm rounded-2xl border border-white/20 backdrop-blur-md transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <span>Tôi cần trợ giúp nhỏ</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleTriggerTestNearbyOpportunity}
-                  className="px-4 py-3 bg-emerald-700/60 hover:bg-emerald-700 text-emerald-100 font-bold text-xs rounded-2xl border border-emerald-500/40 backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer"
-                  title="Thử nghiệm âm thanh chuông & banner thông báo ca trợ giúp trong bán kính 500m"
-                >
-                  <BellRing className="w-4 h-4 text-amber-300 animate-bounce" />
-                  <span>Mô phỏng chuông & thông báo (&lt;500m)</span>
                 </button>
               </div>
             </div>
@@ -475,7 +461,6 @@ export default function App() {
                   <HeartHandshake className="w-5 h-5 text-[#2D5A27]" />
                   <span>Cơ hội trợ giúp gần bạn ({openNeeds.length})</span>
                 </h3>
-                <p className="text-xs text-[#5D6D7E]">Các việc nhỏ an toàn trong bán kính 500m</p>
               </div>
 
               <button
@@ -518,7 +503,6 @@ export default function App() {
                   <BookOpen className="w-5 h-5 text-[#3498DB]" />
                   <span>Câu chuyện cộng đồng</span>
                 </h3>
-                <p className="text-xs text-[#5D6D7E]">Kỷ niệm và những khoảnh khắc đẹp do cư dân sẻ chia</p>
               </div>
 
               <button
@@ -583,9 +567,6 @@ export default function App() {
                   {stories.length} mẩu chuyện
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Các chủ đề phổ biến được hệ thống tự động tổng hợp từ nội dung và kỷ niệm thực tế của cộng đồng.
-              </p>
             </div>
 
             {/* Sort & AI Discovery Controls */}

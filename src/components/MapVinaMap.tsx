@@ -478,7 +478,7 @@ export const MapVinaMap: React.FC<MapVinaMapProps> = ({
       {/* Floating Controls for Zoom & Locate Me */}
       <div className="absolute right-3 top-16 z-20 flex flex-col gap-2">
         <button
-          onClick={locateUserPosition}
+          onClick={() => locateUserPosition()}
           disabled={isLocating}
           className="w-10 h-10 clay-btn-dark text-amber-200 flex items-center justify-center cursor-pointer font-bold disabled:opacity-50"
           title="Định vị vị trí thực tế của tôi"
