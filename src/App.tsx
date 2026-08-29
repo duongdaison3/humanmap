@@ -26,6 +26,7 @@ import { AuthModal } from './components/AuthModal';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { MapPin, HeartHandshake, BookOpen, Compass, ArrowRight, ShieldCheck, Sparkles, Filter, BellRing } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function App() {
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
@@ -865,6 +866,9 @@ export default function App() {
         onTabChange={setActiveTab}
         onRequestHelpClick={handleCreateNeedRequest}
       />
+
+      {/* VERCEL WEB ANALYTICS */}
+      <Analytics />
     </AppShell>
   );
 }
