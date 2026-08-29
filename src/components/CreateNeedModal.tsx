@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
 import { NeedRequest, NeedCategory } from '../types';
 import { geminiService, ParsedNeed } from '../services/geminiService';
 import { firebaseService } from '../services/firebaseService';
@@ -16,7 +17,9 @@ import {
   AlertTriangle,
   RotateCcw,
   Compass,
-  ArrowRight
+  ArrowRight,
+  MapPin,
+  LocateFixed
 } from 'lucide-react';
 
 interface CreateNeedModalProps {
@@ -34,15 +37,103 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [promptText, setPromptText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [parsedNeed, setParsedNeed] = useState<ParsedNeed | null>(null);
-  
+
   // Editable fields for user correction
   const [isEditing, setIsEditing] = useState(false);
   const [editedSummary, setEditedSummary] = useState('');
   const [editedCategory, setEditedCategory] = useState<NeedCategory>('directions');
   const [editedMinutes, setEditedMinutes] = useState(5);
   const [locationName, setLocationName] = useState('Phố Đinh Tiên Hoàng, Hoàn Kiếm, Hà Nội');
-  
+  const [selectedCoords, setSelectedCoords] = useState({ lat: HANOI_CENTER.lat, lng: HANOI_CENTER.lng });
+  const [locationSuggestions, setLocationSuggestions] = useState<Array<{ name: string; address: string; lat: number; lng: number }>>([]);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [isFindingLocation, setIsFindingLocation] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const mapPickerRef = useRef<HTMLDivElement | null>(null);
+  const mapPickerInstanceRef = useRef<L.Map | null>(null);
+  const selectedMarkerRef = useRef<L.Marker | null>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setSelectedCoords(coords);
+        setLocationName(`Vị trí hiện tại của bạn (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`);
+      },
+      () => {
+        setSelectedCoords({ lat: HANOI_CENTER.lat, lng: HANOI_CENTER.lng });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 600000 }
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!showMapPicker || !mapPickerRef.current) return;
+
+    const map = L.map(mapPickerRef.current, {
+      center: [selectedCoords.lat, selectedCoords.lng],
+      zoom: 16,
+      zoomControl: true,
+    });
+
+    const tileLayer = L.tileLayer('/api/mapvina/tile/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; MapVina',
+    });
+    tileLayer.addTo(map);
+
+    const marker = L.marker([selectedCoords.lat, selectedCoords.lng], { draggable: true }).addTo(map);
+    selectedMarkerRef.current = marker;
+
+    map.on('click', async (event: L.LeafletMouseEvent) => {
+      const { lat, lng } = event.latlng;
+      marker.setLatLng([lat, lng]);
+      setSelectedCoords({ lat, lng });
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=vi`);
+        if (res.ok) {
+          const data = await res.json();
+          const address = data?.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          setLocationName(address);
+        } else {
+          setLocationName(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        }
+      } catch {
+        setLocationName(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      }
+    });
+
+    marker.on('dragend', async () => {
+      const position = marker.getLatLng();
+      const next = { lat: position.lat, lng: position.lng };
+      setSelectedCoords(next);
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${next.lat}&lon=${next.lng}&accept-language=vi`);
+        if (res.ok) {
+          const data = await res.json();
+          const address = data?.display_name || `${next.lat.toFixed(5)}, ${next.lng.toFixed(5)}`;
+          setLocationName(address);
+        } else {
+          setLocationName(`${next.lat.toFixed(5)}, ${next.lng.toFixed(5)}`);
+        }
+      } catch {
+        setLocationName(`${next.lat.toFixed(5)}, ${next.lng.toFixed(5)}`);
+      }
+    });
+
+    mapPickerInstanceRef.current = map;
+
+    return () => {
+      map.remove();
+      mapPickerInstanceRef.current = null;
+      selectedMarkerRef.current = null;
+    };
+  }, [showMapPicker, selectedCoords.lat, selectedCoords.lng]);
 
   if (!isOpen) return null;
 
@@ -131,6 +222,27 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     }
   };
 
+  const fetchLocationSuggestions = async (text: string) => {
+    setIsFindingLocation(true);
+    try {
+      const params = new URLSearchParams({ query: text, location: locationName || 'Hà Nội' });
+      const res = await fetch(`/api/places/search?${params.toString()}`);
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.results)) {
+        setLocationSuggestions(data.results.slice(0, 5));
+        return data.results.slice(0, 5);
+      }
+      setLocationSuggestions([]);
+      return [];
+    } catch (error) {
+      console.warn('Failed to fetch location suggestions:', error);
+      setLocationSuggestions([]);
+      return [];
+    } finally {
+      setIsFindingLocation(false);
+    }
+  };
+
   // Analyze Natural Language Request via Gemini AI
   const handleAnalyze = async (textToAnalyze?: string) => {
     const inputStr = textToAnalyze || promptText;
@@ -150,17 +262,43 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     const data = res.data;
     setParsedNeed(data);
 
-    // Check RESTRICTED or unsafe
     if (!data.safeForHumanMap || data.riskLevel === 'RESTRICTED') {
       setStep('restricted');
       return;
     }
 
-    // Set editable default values
     const localCat = mapCategoryToLocal(data.category);
     setEditedSummary(data.summary || data.intent || inputStr);
     setEditedCategory(localCat);
     setEditedMinutes(data.estimatedMinutes || 5);
+
+    const intentHints = [
+      data.category,
+      data.summary,
+      inputStr,
+      'Hà Nội',
+    ].filter(Boolean).join(' ');
+
+    const suggestions = await fetchLocationSuggestions(intentHints);
+    if (suggestions.length > 0) {
+      const primary = suggestions[0];
+      setLocationName(primary.address || primary.name);
+      setSelectedCoords({ lat: primary.lat, lng: primary.lng });
+    } else {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+            setSelectedCoords(coords);
+            setLocationName(`Vị trí hiện tại của bạn (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`);
+          },
+          () => {
+            setLocationName('Phố Đinh Tiên Hoàng, Hoàn Kiếm, Hà Nội');
+          }
+        );
+      }
+    }
+
     setStep('interpreted');
   };
 
@@ -183,8 +321,8 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
       distanceMeters: 100,
       estMinutes: editedMinutes,
       locationName,
-      lat: HANOI_CENTER.lat + (Math.random() - 0.5) * 0.002,
-      lng: HANOI_CENTER.lng + (Math.random() - 0.5) * 0.002,
+      lat: selectedCoords.lat,
+      lng: selectedCoords.lng,
       safetyNote: parsedNeed.reasoningSummary || 'Micro-help an toàn nơi công cộng được AI phân tích.',
       safetyLevel: 'verified_safe',
       urgentLevel: 'normal',
@@ -470,16 +608,91 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               )}
 
               {/* Location Input */}
-              <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  Vị trí công cộng
-                </label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Vị trí công cộng
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowMapPicker((prev) => !prev)}
+                    className="clay-btn-white px-2.5 py-1 text-[10px] font-bold text-slate-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <MapPin className="w-3 h-3" />
+                    {showMapPicker ? 'Ẩn bản đồ' : 'Chọn trên bản đồ'}
+                  </button>
+                </div>
+
                 <input
                   type="text"
                   value={locationName}
                   onChange={(e) => setLocationName(e.target.value)}
                   className="clay-input w-full px-3.5 py-2.5 text-xs text-slate-800 font-bold"
                 />
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition((position) => {
+                          const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+                          setSelectedCoords(coords);
+                          setLocationName(`Vị trí hiện tại của bạn (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`);
+                        });
+                      }
+                    }}
+                    className="clay-btn-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <LocateFixed className="w-3 h-3" />
+                    Dùng vị trí hiện tại
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const text = `${editedCategory} ${locationName || promptText || 'Hà Nội'}`;
+                      const results = await fetchLocationSuggestions(text);
+                      if (results.length > 0) {
+                        const primary = results[0];
+                        setLocationName(`${primary.name} • ${primary.address}`);
+                        setSelectedCoords({ lat: primary.lat, lng: primary.lng });
+                      }
+                    }}
+                    className="clay-btn-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Compass className="w-3 h-3" />
+                    {isFindingLocation ? 'Đang tìm...' : 'Tìm địa điểm chính xác'}
+                  </button>
+                </div>
+
+                {locationSuggestions.length > 0 && (
+                  <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Địa điểm gợi ý</p>
+                    <div className="space-y-1.5">
+                      {locationSuggestions.map((place, idx) => (
+                        <button
+                          key={`${place.name}-${idx}`}
+                          type="button"
+                          onClick={() => {
+                            setLocationName(`${place.name} • ${place.address}`);
+                            setSelectedCoords({ lat: place.lat, lng: place.lng });
+                            setLocationSuggestions([]);
+                          }}
+                          className="w-full text-left rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 hover:border-[#2563EB] hover:bg-blue-50 transition-all cursor-pointer"
+                        >
+                          <div className="text-[11px] font-bold text-slate-800">{place.name}</div>
+                          <div className="text-[10px] text-slate-500">{place.address}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {showMapPicker && (
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                    <div ref={mapPickerRef} className="h-52 w-full rounded-xl" />
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}

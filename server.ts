@@ -5,7 +5,10 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
+const GEMINI_MODEL = "gemini-3.6-flash";
+
 dotenv.config();
+dotenv.config({ path: ".env.local" });
 
 let firebaseAppletConfig: any = {};
 try {
@@ -57,9 +60,113 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+const HANOI_PLACE_FALLBACKS = [
+  { name: 'Nhà ga Hà Nội', address: 'Ga Hà Nội, Hoàn Kiếm, Hà Nội', lat: 21.022303, lng: 105.857171 },
+  { name: 'Cửa hàng thuốc Pharmacity Hoàn Kiếm', address: 'Phố Đinh Tiên Hoàng, Hoàn Kiếm, Hà Nội', lat: 21.028200, lng: 105.854800 },
+  { name: 'Bệnh viện Đa khoa Hà Nội', address: 'Số 1 Trần Khánh Dư, Đống Đa, Hà Nội', lat: 21.021500, lng: 105.836500 },
+  { name: 'Lễ hội Phố Cổ', address: 'Phố Cổ, Hoàn Kiếm, Hà Nội', lat: 21.028500, lng: 105.852000 },
+  { name: 'Khu vực Hồ Hoàn Kiếm', address: 'Hồ Hoàn Kiếm, Hoàn Kiếm, Hà Nội', lat: 21.028700, lng: 105.852700 },
+  { name: 'Chợ Đồng Xuân', address: 'Phố Đồng Xuân, Hoàn Kiếm, Hà Nội', lat: 21.036100, lng: 105.852600 },
+  { name: 'Nhà vệ sinh công cộng Hoàn Kiếm', address: 'Đường Hàng Khay, Hoàn Kiếm, Hà Nội', lat: 21.031400, lng: 105.851100 },
+  { name: 'Trạm xe buýt Hoàn Kiếm', address: 'Đường Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', lat: 21.029800, lng: 105.853500 },
+];
+
+function normalizeSerpPlace(item: any) {
+  if (!item || typeof item !== 'object') return null;
+
+  const title = item.title || item.name || item.place || item.name || 'Địa điểm';
+  const address = item.address || item.street || item.snippet || item.description || 'Vị trí công cộng';
+  const lat = Number(item.latitude ?? item.lat ?? item.gps_coordinates?.latitude ?? item.geo?.lat);
+  const lng = Number(item.longitude ?? item.lng ?? item.gps_coordinates?.longitude ?? item.geo?.lng);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  return {
+    name: String(title),
+    address: String(address),
+    lat,
+    lng,
+  };
+}
+
+async function searchPlacesViaSerpApi(query: string, locationHint?: string) {
+  const apiKey = (process.env.MAP_SERP_API || '').trim();
+  if (!apiKey) return { results: [], source: 'none' };
+
+  const params = new URLSearchParams({
+    engine: 'google_maps',
+    q: query,
+    api_key: apiKey,
+    hl: 'vi',
+    gl: 'vn',
+    num: '5',
+  });
+
+  if (locationHint) {
+    params.set('location', locationHint);
+  }
+
+  const response = await fetch(`https://serpapi.com/search?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`SerpAPI returned ${response.status}`);
+  }
+
+  const data = await response.json();
+  const rawResults = Array.isArray(data?.local_results)
+    ? data.local_results
+    : Array.isArray(data?.place_results)
+      ? data.place_results
+      : Array.isArray(data?.organic_results)
+        ? data.organic_results
+        : [];
+
+  const results = rawResults
+    .map(normalizeSerpPlace)
+    .filter(Boolean)
+    .slice(0, 5);
+
+  return { results, source: results.length ? 'serpapi' : 'empty' };
+}
+
+app.get('/api/places/search', async (req, res) => {
+  try {
+    const query = String(req.query.query || '').trim();
+    const locationHint = String(req.query.location || '').trim();
+
+    if (!query) {
+      return res.status(400).json({ success: false, error: 'Thiếu từ khóa tìm kiếm địa điểm.' });
+    }
+
+    try {
+      const { results, source } = await searchPlacesViaSerpApi(query, locationHint || undefined);
+      if (source === 'serpapi' && results.length > 0) {
+        return res.json({ success: true, source: 'serpapi', results });
+      }
+    } catch (error) {
+      console.warn('SerpAPI place search failed, falling back to local dataset:', error);
+    }
+
+    const q = query.toLowerCase();
+    const fallbackResults = HANOI_PLACE_FALLBACKS.filter((item) => {
+      const haystack = `${item.name} ${item.address}`.toLowerCase();
+      if (!q) return true;
+      return haystack.includes(q) || q.includes('ga') && haystack.includes('ga') || q.includes('nhà thuốc') && haystack.includes('thuốc') || q.includes('toilet') && haystack.includes('vệ sinh') || q.includes('hồ') && haystack.includes('hồ') || q.includes('chợ') && haystack.includes('chợ');
+    }).slice(0, 5);
+
+    return res.json({
+      success: true,
+      source: 'fallback',
+      results: fallbackResults.length ? fallbackResults : HANOI_PLACE_FALLBACKS.slice(0, 5),
+    });
+  } catch (error) {
+    console.error('Error in /api/places/search:', error);
+    return res.status(500).json({ success: false, error: 'Không thể tìm địa điểm phù hợp.' });
+  }
+});
+
 // Initialize Gemini Client
 const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!apiKey) return null;
   return new GoogleGenAI({
     apiKey,
@@ -210,7 +317,7 @@ Examples: "This appears to be a simple navigation request." or "Medical emergenc
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         maxOutputTokens: 256,
@@ -313,7 +420,7 @@ app.post("/api/gemini/classify-risk", async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         maxOutputTokens: 128,
@@ -364,7 +471,7 @@ app.post("/api/gemini/generate-story", async (req, res) => {
 
     const prompt = `Write a short, heart-warming Vietnamese human story about helper ${helperName} helping ${requesterName} with "${needTitle}" at ${locationName}.`;
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         maxOutputTokens: 256,
@@ -429,7 +536,7 @@ Yêu cầu:
 4. aiImpactTip: Lời khuyên 1 câu giúp người dùng tăng thêm niềm tin và khả năng giúp đỡ.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         maxOutputTokens: 256,
@@ -502,7 +609,7 @@ Hãy tạo phân tích tiếng Việt ngắn gọn, giàu cảm hứng:
 5. safetyAdvice: 1 lời khuyên an toàn micro-help ngắn gọn.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         maxOutputTokens: 256,
@@ -563,7 +670,7 @@ app.post("/api/gemini/match-explanation", async (req, res) => {
     const prompt = `Explain in 1 concise, user-friendly sentence why helper "${helperName}" (distance ${helperDistance}m, skills: ${helperSkills?.join(', ')}, completed helps: ${completedHelps}) is a suggested match for need "${needTitle}". Keep it natural and warm. Do not expose chain of thought.`;
     
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         maxOutputTokens: 128,
@@ -627,7 +734,7 @@ User Reflection / Memory:
 Generate a polished human story adhering strictly to the non-invention and quote rules.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: userPrompt,
       config: {
         maxOutputTokens: 512,
@@ -716,7 +823,7 @@ Yêu cầu:
 5. insight: 1 câu đúc kết cái nhìn chung về tinh thần gắn kết qua các câu chuyện này.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         maxOutputTokens: 512,
