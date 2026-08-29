@@ -410,7 +410,7 @@ export default function App() {
             <div className="relative z-10 space-y-4">
               <div className="inline-flex items-center gap-1.5 bg-[#F59E0B]/20 text-[#FAD7A0] text-xs font-bold px-3 py-1 rounded-full border border-[#F59E0B]/30">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Thành phố nhân văn • {currentProvince.name}</span>
+                <span>{currentProvince.slogan} • {currentProvince.name}</span>
               </div>
 
               <h2 className="font-serif italic text-2xl sm:text-3xl lg:text-4xl leading-tight">
